@@ -17,7 +17,6 @@ public class IngestionServiceApp {
 
         app.get("/health", ctx -> ctx.result("OK"));
 
-        // Expose the cleaned records for ward-service to consume
         app.get("/wards", ctx -> ctx.json(cleanedWards));
     }
 
@@ -47,8 +46,13 @@ public class IngestionServiceApp {
         record.put("wardId", rawWardId.trim().toUpperCase());
         record.put("wing", titleCaseAndCollapseSpaces(rawWing));
         record.put("department", titleCaseAndCollapseSpaces(rawDept));
-        // bedsAvailable left as raw string for now — proper parsing/validation comes in the next stage
-        record.put("bedsAvailable", rawBeds.trim());
+
+        Integer beds = parseBeds(rawBeds);
+        record.put("bedsAvailable", beds);
+        record.put("notes", beds == null
+                ? "bedsAvailable was invalid ('" + rawBeds.trim() + "') — flagged for follow-up"
+                : null);
+
 
         return record;
     }
@@ -63,4 +67,24 @@ public class IngestionServiceApp {
         }
         return sb.toString().trim();
     }
+    private static Integer parseBeds(String raw) {
+        if (raw == null) return null;
+        String trimmed = raw.trim();
+
+        Set<String> placeholders = Set.of("n/a", "na", "tbd", "unknown", "-", "nan", "");
+        if (placeholders.contains(trimmed.toLowerCase())) {
+            return null;
+        }
+
+        try {
+            int value = Integer.parseInt(trimmed);
+            if (value < 0 || value > 200) {
+                return null;
+            }
+            return value;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
 }
