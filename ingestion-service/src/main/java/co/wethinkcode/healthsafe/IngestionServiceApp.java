@@ -45,7 +45,7 @@ public class IngestionServiceApp {
 
         record.put("wardId", rawWardId.trim().toUpperCase());
         record.put("wing", titleCaseAndCollapseSpaces(rawWing));
-        record.put("department", titleCaseAndCollapseSpaces(rawDept));
+        record.put("department", normalizeDepartment(rawDept));
 
         Integer beds = parseBeds(rawBeds);
         record.put("bedsAvailable", beds);
@@ -67,6 +67,15 @@ public class IngestionServiceApp {
         }
         return sb.toString().trim();
     }
+
+    private static String normalizeDepartment(String raw) {
+        String cleaned = titleCaseAndCollapseSpaces(raw);
+        if (cleaned.equalsIgnoreCase("Pediatrics")) {
+            cleaned = "Paediatrics";
+        }
+        return cleaned;
+    }
+
     private static Integer parseBeds(String raw) {
         if (raw == null) return null;
         String trimmed = raw.trim();
