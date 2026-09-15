@@ -21,18 +21,25 @@ public class IngestionServiceApp {
     }
 
     private static List<Map<String, Object>> loadAndCleanWards() throws Exception {
-        List<Map<String, Object>> results = new ArrayList<>();
+        Map<String, Map<String, Object>> byWardId = new LinkedHashMap<>();
 
         InputStream is = IngestionServiceApp.class.getResourceAsStream("/wards-outdated.csv");
         try (CSVReader reader = new CSVReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
             reader.readNext(); // skip header row
             String[] row;
             while ((row = reader.readNext()) != null) {
-                results.add(cleanRow(row));
+                Map<String, Object> record = cleanRow(row);
+                String wardId = (String) record.get("wardId");
+
+                if (byWardId.containsKey(wardId)) {
+                    byWardId.put(wardId, mergeDuplicates(byWardId.get(wardId), record));
+                } else {
+                    byWardId.put(wardId, record);
+                }
             }
         }
 
-        return results;
+        return new ArrayList<>(byWardId.values());
     }
 
     private static Map<String, Object> cleanRow(String[] row) {
@@ -96,4 +103,13 @@ public class IngestionServiceApp {
         }
     }
 
+    private static Map<String, Object> mergeDuplicates(Map<String, Object> existing, Map<String, Object> incoming) {
+        // Prefer whichever record actually has a valid bed count
+        Map<String, Object> winner = (existing.get("bedsAvailable") != null) ? existing : incoming;
+        Map<String, Object> merged = new LinkedHashMap<>(winner);
+        merged.put("notes", "duplicate record detected and merged (multiple casing/format variants for this ward)");
+        return merged;
+    }
 }
+
+
