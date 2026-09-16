@@ -2,14 +2,18 @@ package co.wethinkcode.healthsafe;
 
 import io.javalin.Javalin;
 
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class AlertLevelServiceApp {
+
+    private static final AtomicInteger currentLevel = new AtomicInteger(0);
 
     public static void main(String[] args) {
         Javalin app = Javalin.create().start(7032);
 
         app.get("/health", ctx -> ctx.result("OK"));
 
-        // TODO (Tracks the hospital Emergency Status (0-8, 8 = full Code Blue).)
-        // Add domain endpoints for alert-level-service here.
+        app.get("/alert-level", ctx -> ctx.json(Map.of("level", currentLevel.get())));
     }
 }
