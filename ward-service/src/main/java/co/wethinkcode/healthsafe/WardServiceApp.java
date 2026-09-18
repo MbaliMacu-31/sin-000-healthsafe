@@ -25,6 +25,22 @@ public class WardServiceApp {
         app.get("/health", ctx -> ctx.result("OK"));
 
         app.get("/wards", ctx -> ctx.json(wards));
+
+        app.get("/wards/{id}", ctx -> {
+            String requestedId = ctx.pathParam("id");
+
+            Map<String, Object> match = wards.stream()
+                    .filter(w -> requestedId.equalsIgnoreCase((String) w.get("wardId")))
+                    .findFirst()
+                    .orElse(null);
+
+            if (match == null) {
+                ctx.status(404).json(Map.of("error", "Ward not found: " + requestedId));
+                return;
+            }
+
+            ctx.json(match);
+        });
     }
 
     private static List<Map<String, Object>> fetchWardsFromIngestion() throws Exception {
