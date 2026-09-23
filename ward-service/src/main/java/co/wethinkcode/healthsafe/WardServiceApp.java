@@ -97,4 +97,19 @@ public class WardServiceApp {
 
         System.out.println("Subscribed to " + MqConfig.TOPIC + " — waiting for staffing events.");
     }
+    private static void publishEquipmentFailure(Map<String, Object> alert) throws Exception {
+        ConnectionFactory factory = new ActiveMQConnectionFactory(MqConfig.BROKER_URL);
+        Connection connection = factory.createConnection();
+        try {
+            connection.start();
+            Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+            Queue queue = session.createQueue(MqConfig.QUEUE);
+            MessageProducer producer = session.createProducer(queue);
+            producer.setDeliveryMode(DeliveryMode.PERSISTENT);
+
+            producer.send(session.createTextMessage(mapper.writeValueAsString(alert)));
+        } finally {
+            connection.close();
+        }
+    }
 }
