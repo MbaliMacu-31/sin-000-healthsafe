@@ -58,6 +58,40 @@ public class WardServiceApp {
 
             ctx.json(update);
         });
+        app.post("/wards/{id}/equipment-failures", ctx -> {
+            String requestedId = ctx.pathParam("id");
+
+            Map<String, Object> ward = wards.stream()
+                    .filter(w -> requestedId.equalsIgnoreCase((String) w.get("wardId")))
+                    .findFirst()
+                    .orElse(null);
+            if (ward == null) {
+                ctx.status(404).json(Map.of("error", "Ward not found: " + requestedId));
+                return;
+            }
+
+            Map<String, Object> body = ctx.bodyAsClass(Map.class);
+            Object equipment = body.get("equipment");
+            if (!(equipment instanceof String) || ((String) equipment).isBlank()) {
+                ctx.status(400).json(Map.of("error", "'equipment' is required"));
+                return;
+            }
+
+            Map<String, Object> alert = new java.util.LinkedHashMap<>();
+            alert.put("alertId", java.util.UUID.randomUUID().toString());
+            alert.put("wardId", ward.get("wardId"));
+            alert.put("equipment", ((String) equipment).trim());
+            alert.put("detectedAt", java.time.Instant.now().toString());
+
+            try {
+                publishEquipmentFailure(alert);
+            } catch (Exception e) {
+                ctx.status(503).json(Map.of("error", "Alert could not be queued: " + e.getMessage()));
+                return;
+            }
+
+            ctx.status(202).json(alert);
+        });
     }
 
     private static List<Map<String, Object>> fetchWardsFromIngestion() throws Exception {
