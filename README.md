@@ -28,8 +28,29 @@ cleanup through synchronous REST calls to asynchronous MQ decoupling and alertin
 Plus [`common/`](common) (no port) — the shared ActiveMQ broker and MQ config notes
 for `staffing-events-topic`: Staffing updates are broadcast as Events via the broker to decouple the frontend from the Staffing Service.
 
-**Status:** scaffold only — build files, Javalin bootstrap, and TODOs are in place; no
-business logic has been implemented yet.
+**Status:** Stages 1-2 (the required core) are complete and tested. Stage 3 (MQ decoupling)
+is also complete and verified — see Progress below. Stage 4 (alerting) was not attempted;
+given the timeline, effort went into a solid core plus one working stretch goal rather than
+a rushed attempt at both stretch goals.
+
+## Progress
+
+-  **Stage 1 — Ingestion:** `IngestionServiceApp` cleans `wards-outdated.csv` — handles
+  inconsistent casing, padding, duplicate records (merged, not just flagged), invalid/
+  placeholder bed counts, and spelling variants (Pediatrics/Paediatrics). Exposed over
+  `GET /wards`.
+-  **Stage 2 — REST services:** `ward-service` fetches from `ingestion-service` and
+  exposes `GET /wards` and `GET /wards/{id}` (404 for unknown wards). `alert-level-service`
+  tracks Emergency Status with `GET`/`POST /alert-level`, validating the 0-8 range.
+  `staffing-service` computes an on-call schedule via `GET /schedule/{wardId}`, calling
+  both `ward-service` and `alert-level-service` synchronously — and handles a downstream
+  404 or unreachable service gracefully (502) rather than crashing.
+-  **Stage 3 — MQ decoupling:** `staffing-service` publishes a staffing event to the
+  `staffing-events-topic` ActiveMQ topic every time a schedule is computed.
+  `ward-service` subscribes on startup and stores the latest update per ward, exposed via
+  `GET /wards/{id}/staffing` — verified working end-to-end via the ActiveMQ web console
+  (real producer, real consumer, real message count).
+-  **Stage 4 — Alerting:** not attempted.
 
 ## Your task
 
