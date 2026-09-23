@@ -28,11 +28,7 @@ cleanup through synchronous REST calls to asynchronous MQ decoupling and alertin
 Plus [`common/`](common) (no port) — the shared ActiveMQ broker and MQ config notes
 for `staffing-events-topic`: Staffing updates are broadcast as Events via the broker to decouple the frontend from the Staffing Service.
 
-**Status:** Stages 1-2 (the required core) are complete and tested. Stage 3 (MQ decoupling)
-is also complete and verified — see Progress below. Stage 4 (alerting) was not attempted;
-given the timeline, effort went into a solid core plus one working stretch goal rather than
-a rushed attempt at both stretch goals.
-
+**Status:** All four stages are complete and tested manually — see Progress below.
 ## Progress
 
 -  **Stage 1 — Ingestion:** `IngestionServiceApp` cleans `wards-outdated.csv` — handles
@@ -50,7 +46,16 @@ a rushed attempt at both stretch goals.
   `ward-service` subscribes on startup and stores the latest update per ward, exposed via
   `GET /wards/{id}/staffing` — verified working end-to-end via the ActiveMQ web console
   (real producer, real consumer, real message count).
--  **Stage 4 — Alerting:** not attempted.
+- **Stage 4 — Alerting:** `ward-service` exposes `POST /wards/{id}/equipment-failures`
+      (404 for an unknown ward, 400 if `equipment` is missing, 503 if the broker is down) and
+      publishes a persistent message to `equipment-failure-queue`. `equipment-alert-service`
+      consumes it with client acknowledge, so a message is only removed from the queue once it has
+      been handled. Verified by stopping the consumer, sending an alert, seeing it wait on the
+      queue in the ActiveMQ console, then restarting the consumer and watching it arrive.
+      **Why a queue and not a topic:** an alert must reach exactly one consumer and must not be
+      lost if that consumer is down. A topic only reaches whoever is listening at that moment,
+      which is fine for staffing updates (the next one replaces a missed one) but not for a
+      failing ventilator.
 
 ## Your task
 
